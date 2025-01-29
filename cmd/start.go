@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"time"
-	//"strconv"
+	"strconv"
 	"github.com/spf13/cobra"
 )
 
@@ -11,19 +11,21 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Starts the pomodoro timer",
 	Run: func(cmd *cobra.Command, args []string) {
-	      fmt.Printf("Inside start Run with args: %v\n", args)
+		runPomodoroTimer()
     },
 }
+var Hours int
+var Minutes int
 
 func init() {
-	startCmd.Flags().IntP("hours", "h", 1, "The hours value for the timer")
-	startCmd.Flags().IntP("minutes", "m", 0, "The minutes value for the timer")
-	//durationStr, _ := time.ParseDuration(strconv.Itoa(*hours) + "h" + strconv.Itoa(*minutes) + "m")
+	startCmd.Flags().IntVarP(&Hours, "hours", "r", 1, "The hours value for the timer")
+	startCmd.Flags().IntVarP(&Minutes, "minutes", "m", 0, "The minutes value for the timer")
 
 	rootCmd.AddCommand(startCmd)
 }
 
-func runPomodoroTimer(timerDuration time.Duration) {
+func runPomodoroTimer() {
+	timerDuration, _ := time.ParseDuration(strconv.Itoa(Hours) + "h" + strconv.Itoa(Minutes) + "m")
 	endTime := time.Now().Add(timerDuration)
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()

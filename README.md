@@ -18,7 +18,7 @@ go install
 
 Verify installation 
 ```
-pomodoro help
+pomodoro --version 
 ```
 
 *If you receive a `command not found: pomodoro` error, you can either update GOBIN to be `usr/local/bin` or update your path to include the `go/bin` directory*
