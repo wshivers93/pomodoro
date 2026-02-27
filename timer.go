@@ -48,7 +48,7 @@ func restoreMode(fd uintptr, orig *termios) {
 	tcsetattr(fd, orig)
 }
 
-func runTimer(workMins, breakMins int) {
+func runTimer(workMins, breakMins int, inline bool) {
 	fd := os.Stdin.Fd()
 	orig, err := enableRawMode(fd)
 	if err != nil {
@@ -56,13 +56,25 @@ func runTimer(workMins, breakMins int) {
 	}
 	defer func() {
 		restoreMode(fd, orig)
-		fmt.Print(showCursor)
+		if !inline {
+			fmt.Print(showCursor)
+		}
 	}()
 
-	fmt.Print(hideCursor)
+	if !inline {
+		fmt.Print(hideCursor)
+	}
+
+	render := renderDisplay
+	if inline {
+		render = renderInline
+	}
 
 	// Work phase
-	if quit := countdown("Work", workMins*60); quit {
+	if quit := countdown("Work", workMins*60, render); quit {
+		if inline {
+			fmt.Println() // newline so prompt isn't clobbered
+		}
 		return
 	}
 
@@ -70,14 +82,23 @@ func runTimer(workMins, breakMins int) {
 	fmt.Print("\a")
 
 	// Break phase
-	if quit := countdown("Break", breakMins*60); quit {
+	if quit := countdown("Break", breakMins*60, render); quit {
+		if inline {
+			fmt.Println()
+		}
 		return
 	}
 
-	renderDone()
+	if inline {
+		renderInlineDone()
+	} else {
+		renderDone()
+	}
 }
 
-func countdown(label string, totalSecs int) bool {
+type renderFunc func(label string, remaining int, total int, paused bool)
+
+func countdown(label string, totalSecs int, render renderFunc) bool {
 	remaining := totalSecs
 	paused := false
 
@@ -85,7 +106,7 @@ func countdown(label string, totalSecs int) bool {
 	defer ticker.Stop()
 
 	buf := make([]byte, 1)
-	renderDisplay(label, remaining, totalSecs, paused)
+	render(label, remaining, totalSecs, paused)
 
 	for remaining > 0 {
 		// Check for keypress (non-blocking due to VTIME)
@@ -97,7 +118,7 @@ func countdown(label string, totalSecs int) bool {
 				return true
 			case ' ':
 				paused = !paused
-				renderDisplay(label, remaining, totalSecs, paused)
+				render(label, remaining, totalSecs, paused)
 			}
 		}
 
@@ -105,7 +126,7 @@ func countdown(label string, totalSecs int) bool {
 		case <-ticker.C:
 			if !paused {
 				remaining--
-				renderDisplay(label, remaining, totalSecs, paused)
+				render(label, remaining, totalSecs, paused)
 			}
 		default:
 		}
